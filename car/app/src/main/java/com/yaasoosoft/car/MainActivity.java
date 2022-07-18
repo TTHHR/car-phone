@@ -101,7 +101,13 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
      * 打开设备 , 让车机和手机端连起来
      */
     private void openDevices() {
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(USB_ACTION), 0);
+        PendingIntent pendingIntent ;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            pendingIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_IMMUTABLE);
+        } else {
+            pendingIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_ONE_SHOT);
+        }
+
         IntentFilter intentFilter = new IntentFilter(USB_ACTION);
         mOpenDevicesReceiver = new OpenDevicesReceiver(this);
         registerReceiver(mOpenDevicesReceiver, intentFilter);
@@ -111,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
         if (deviceList != null) {
             for (UsbDevice usbDevice : deviceList.values()) {
                 int productId = usbDevice.getProductId();
+                Log.e(TAG,"product "+productId);
                 mLog.setText("product "+productId);
                 if (productId != 377 && productId != 7205) {
                     if (mUsbManager.hasPermission(usbDevice)) {
@@ -203,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
      */
     private void loopReceiverMessage() {
         mThreadPool.execute(new Runnable() {
-            byte[] mBytes=new byte[1024];
+            byte[] mBytes=new byte[16384];
             @Override
             public void run() {
                 SystemClock.sleep(1000);

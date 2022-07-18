@@ -11,6 +11,7 @@ import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -40,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
     private ParcelFileDescriptor mParcelFileDescriptor;
     private FileInputStream mFileInputStream;
     private FileOutputStream mFileOutputStream;
+    private String TAG="Main";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,12 +81,19 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
         registerReceiver(mUsbDetachedReceiver, filter);
 
         mOpenAccessoryReceiver = new OpenAccessoryReceiver(this);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(USB_ACTION), 0);
+        PendingIntent pendingIntent ;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            pendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_IMMUTABLE);
+        } else {
+            pendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_ONE_SHOT);
+        }
         IntentFilter intentFilter = new IntentFilter(USB_ACTION);
         registerReceiver(mOpenAccessoryReceiver, intentFilter);
 
-        UsbAccessory[] accessories = mUsbManager.getAccessoryList();
-        UsbAccessory usbAccessory = (accessories == null ? null : accessories[0]);
+        UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        UsbAccessory[] accessoryList = manager.getAccessoryList();
+        UsbAccessory usbAccessory = accessoryList == null ? null : accessoryList[0];
+        Log.e(TAG,"usbAccessory "+usbAccessory);
         if (usbAccessory != null) {
             if (mUsbManager.hasPermission(usbAccessory)) {
                 openAccessory(usbAccessory);
@@ -104,10 +113,9 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
             FileDescriptor fileDescriptor = mParcelFileDescriptor.getFileDescriptor();
             mFileInputStream = new FileInputStream(fileDescriptor);
             mFileOutputStream = new FileOutputStream(fileDescriptor);
-            mSend.setEnabled(true);
 
             mThreadPool.execute(new Runnable() {
-                byte[] mBytes=new byte[1024];
+                byte[] mBytes=new byte[16384];
                 @Override
                 public void run() {
                     int i = 0;
