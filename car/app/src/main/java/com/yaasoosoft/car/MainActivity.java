@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements UsbDetachedReceiver.UsbDetachedListener, OpenDevicesReceiver.OpenDevicesListener{
+public class MainActivity extends AppCompatActivity implements UsbReceiver.UsbListener, OpenDevicesReceiver.OpenDevicesListener{
 
     private static final String USB_ACTION = "com.yaasoosoft.usbaction";
     private static final String TAG ="main" ;
@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
     private Context mContext;
     private ExecutorService mThreadPool;
     private UsbManager mUsbManager;
-    private UsbDetachedReceiver mUsbDetachedReceiver;
+    private UsbReceiver mUsbDetachedReceiver;
     private OpenDevicesReceiver mOpenDevicesReceiver;
     private UsbDeviceConnection mUsbDeviceConnection;
     private UsbInterface mUsbInterface;
@@ -82,13 +82,14 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
     }
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMessageEvent(String msg) {
-        mLog.append(msg);
         mLog.append("\n");
+        mLog.append(msg);
     }
     private void initData() {
         mContext = getApplicationContext();
-        mUsbDetachedReceiver = new UsbDetachedReceiver(this);
+        mUsbDetachedReceiver = new UsbReceiver(this);
         IntentFilter intentFilter = new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED);
+        intentFilter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         registerReceiver(mUsbDetachedReceiver, intentFilter);
 
         mThreadPool = Executors.newFixedThreadPool(5);
@@ -101,36 +102,14 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
      * 打开设备 , 让车机和手机端连起来
      */
     private void openDevices() {
-        PendingIntent pendingIntent ;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            pendingIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_IMMUTABLE);
-        } else {
-            pendingIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_ONE_SHOT);
-        }
 
         IntentFilter intentFilter = new IntentFilter(USB_ACTION);
         mOpenDevicesReceiver = new OpenDevicesReceiver(this);
         registerReceiver(mOpenDevicesReceiver, intentFilter);
 
-        //列举设备(手机)
-        HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
-        if (deviceList != null) {
-            for (UsbDevice usbDevice : deviceList.values()) {
-                int productId = usbDevice.getProductId();
-                Log.e(TAG,"product "+productId);
-                mLog.setText("product "+productId);
-                if (productId != 377 && productId != 7205) {
-                    if (mUsbManager.hasPermission(usbDevice)) {
-                        initAccessory(usbDevice);
-                    } else {
-                        mUsbManager.requestPermission(usbDevice, pendingIntent);
-                    }
-                }
-            }
-        } else {
-            mLog.setText("请连接USB");
-        }
+       connectDevice();
     }
+
     /**
      * 发送命令 , 让手机进入Accessory模式
      *
@@ -139,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
     private void initAccessory(UsbDevice usbDevice) {
         UsbDeviceConnection usbDeviceConnection = mUsbManager.openDevice(usbDevice);
         if (usbDeviceConnection == null) {
-            mLog.setText("请连接USB");
+            EventBus.getDefault().post("请连接USB");
             return;
         }
 
@@ -152,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
         initStringControlTransfer(usbDeviceConnection, 5, "0123456789"); // SERIAL
         usbDeviceConnection.controlTransfer(0x40, 53, 0, 0, new byte[]{}, 0, 100);
         usbDeviceConnection.close();
-        mLog.setText("initAccessory success");
+        EventBus.getDefault().post("initAccessory success");
         initDevice();
     }
     private void initStringControlTransfer(UsbDeviceConnection deviceConnection, int index, String string) {
@@ -231,9 +210,37 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
     }
 
     @Override
+    public void connectDevice() {
+        PendingIntent pendingIntent ;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            pendingIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_IMMUTABLE);
+        } else {
+            pendingIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_ONE_SHOT);
+        }
+        //列举设备(手机)
+        HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
+        if (deviceList != null&&deviceList.size()!=0) {
+            for (UsbDevice usbDevice : deviceList.values()) {
+                int productId = usbDevice.getProductId();
+                Log.e(TAG,"product "+productId);
+                mLog.setText("product "+productId);
+                if (productId != 377 && productId != 7205) {
+                    if (mUsbManager.hasPermission(usbDevice)) {
+                        initAccessory(usbDevice);
+                    } else {
+                        mUsbManager.requestPermission(usbDevice, pendingIntent);
+                    }
+                }
+            }
+        } else {
+            mLog.setText("请连接USB");
+        }
+    }
+
+    @Override
     public void usbDetached() {
         if (isDetached) {
-            finish();
+           // finish();
         }
     }
 
@@ -243,8 +250,8 @@ public class MainActivity extends AppCompatActivity implements UsbDetachedReceiv
     }
 
     @Override
-    public void openDevicesError() {
-        mLog.setText("USB连接错误");
+    public void openDevicesError(String msg) {
+        EventBus.getDefault().post(msg);
     }
     @Override
     public void onStart() {

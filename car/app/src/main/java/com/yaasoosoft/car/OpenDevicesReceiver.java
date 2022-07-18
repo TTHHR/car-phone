@@ -21,10 +21,10 @@ public class OpenDevicesReceiver extends BroadcastReceiver {
             if (usbDevice != null) {
                 mOpenDevicesListener.openAccessoryModel(usbDevice);
             } else {
-                mOpenDevicesListener.openDevicesError();
+                mOpenDevicesListener.openDevicesError("usb设备为空");
             }
         } else {
-            mOpenDevicesListener.openDevicesError();
+            mOpenDevicesListener.openDevicesError("没有权限");
         }
     }
 
@@ -39,6 +39,6 @@ public class OpenDevicesReceiver extends BroadcastReceiver {
         /**
          * 打开设备(手机)失败
          */
-        void openDevicesError();
+        void openDevicesError(String msg);
     }
 }
