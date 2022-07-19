@@ -1,14 +1,17 @@
 package com.yaasoosoft.phone;
 
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
 import com.yaasoosoft.EventMessage;
+import com.yaasoosoft.phone.utils.RecorderHelper;
 import com.yaasoosoft.phone.utils.UsbHelper;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -20,14 +23,18 @@ public class MainActivity extends BaseActivity {
 
 
     private TextView mLog;
-    private Button mSend;
+    private Button mSend,mTouping;
     private EditText mMessage;
 
     private String TAG="Main";
     private UsbHelper usbHelper;
+    private RecorderHelper recorderHelper;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //不息屏
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         setContentView(R.layout.activity_main);
         initView();
         initListener();
@@ -37,6 +44,7 @@ public class MainActivity extends BaseActivity {
         mLog =  findViewById(R.id.log);
         mMessage =  findViewById(R.id.message);
         mSend =  findViewById(R.id.send);
+        mTouping=findViewById(R.id.touping);
     }
 
     private void initListener() {
@@ -49,11 +57,19 @@ public class MainActivity extends BaseActivity {
                 usbHelper.writeData(message);
             }
         });
+        mTouping.setOnClickListener(v->{
+            if(usbHelper.isLink())
+            recorderHelper.start();
+            else
+            mLog.append("USB未连接");
+        });
     }
 
     private void initData() {
         usbHelper=new UsbHelper(getApplicationContext());
         usbHelper.init();
+        recorderHelper=new RecorderHelper(this);
+        recorderHelper.init();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

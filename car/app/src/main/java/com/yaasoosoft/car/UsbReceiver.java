@@ -19,24 +19,21 @@ public class UsbReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        em.setMsg(intent.getAction());
-        EventBus.getDefault().post(em);
+
         if(intent.getAction().equals("android.hardware.usb.action.USB_DEVICE_ATTACHED"))
         {
             mUsbListener.connectDevice();
         }
         else
         {
-            mUsbListener.usbDetached();
+            em.setMsg(intent.getAction());
+            em.msgType=EventMessage.MESSAGE_USB_DETACH;
+            EventBus.getDefault().post(em);
         }
 
     }
 
     public interface UsbListener {
         void connectDevice();
-        /**
-         * usb断开连接
-         */
-        void usbDetached();
     }
 }

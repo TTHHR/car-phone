@@ -17,6 +17,8 @@ import com.yaasoosoft.car.UsbReceiver;
 import com.yaasoosoft.EventMessage;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -262,8 +264,10 @@ public class UsbHelper implements UsbReceiver.UsbListener, OpenDevicesReceiver.O
         }
     }
 
-    @Override
-    public void usbDetached() {
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void usbDetached(EventMessage eventMessage) {
+        if(eventMessage.msgType!=EventMessage.MESSAGE_USB_DETACH)
+            return;
         em.setMsg("usb已断开");
         EventBus.getDefault().post(em);
         linkSuccess=false;

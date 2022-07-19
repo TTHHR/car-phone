@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 public class EventMessage implements Serializable {
     public static final int MESSAGE_TEXT = 0;
+    public static final int MESSAGE_USB_DETACH = 3;
     public static int MESSAGE_LOG=1;
     public static int MESSAGE_VIDEO=2;
     private byte[] videoBuff;

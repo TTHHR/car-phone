@@ -6,6 +6,7 @@ public class EventMessage implements Serializable {
     public static final int MESSAGE_TEXT = 0;
     public static int MESSAGE_LOG=1;
     public static int MESSAGE_VIDEO=2;
+    public static int MESSAGE_USB_DETACH=3;
     private byte[] videoBuff;
     public  int msgType=MESSAGE_LOG;
     private  String msg="";

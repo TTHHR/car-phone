@@ -5,24 +5,20 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.yaasoosoft.EventMessage;
+
+import org.greenrobot.eventbus.EventBus;
+
 public class UsbReceiver extends BroadcastReceiver {
     private static final String TAG = "UsbDetached";
-    private UsbListener mUsbListener;
-
-    public UsbReceiver(UsbListener usbListener) {
-        mUsbListener = usbListener;
-    }
+    EventMessage eventMessage=new EventMessage();
 
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.e(TAG,"attached "+intent.getAction());
-        mUsbListener.usbDetached();
+        eventMessage.msgType=EventMessage.MESSAGE_USB_DETACH;
+        EventBus.getDefault().post(eventMessage);
     }
 
-    public interface UsbListener {
-        /**
-         * usb断开连接
-         */
-        void usbDetached();
-    }
+
 }

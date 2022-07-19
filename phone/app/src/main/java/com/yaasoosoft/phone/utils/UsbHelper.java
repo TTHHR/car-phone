@@ -17,6 +17,8 @@ import com.yaasoosoft.EventMessage;
 
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,7 +31,7 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-public class UsbHelper implements UsbReceiver.UsbListener, OpenAccessoryReceiver.OpenAccessoryListener{
+public class UsbHelper implements  OpenAccessoryReceiver.OpenAccessoryListener{
     private final Context context;
     private static final String USB_ACTION = "com.yaasoosoft.usbaction";
     private static final String TAG ="UsbHelper" ;
@@ -49,7 +51,7 @@ public class UsbHelper implements UsbReceiver.UsbListener, OpenAccessoryReceiver
     public void init()
     {
 
-        mUsbReceiver = new UsbReceiver(this);
+        mUsbReceiver = new UsbReceiver();
         IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
         context.registerReceiver(mUsbReceiver, filter);
 
@@ -119,6 +121,7 @@ public class UsbHelper implements UsbReceiver.UsbListener, OpenAccessoryReceiver
             }).start();
         }
     }
+    @Subscribe(threadMode = ThreadMode.BACKGROUND)
     public void writeData(EventMessage eventMessage)
     {
         if(!linkSuccess)
@@ -127,6 +130,7 @@ public class UsbHelper implements UsbReceiver.UsbListener, OpenAccessoryReceiver
         }
         else
         {
+
             try(
                     ByteArrayOutputStream bas = new ByteArrayOutputStream();
                     ObjectOutputStream oos = new ObjectOutputStream(bas);
@@ -155,8 +159,10 @@ public class UsbHelper implements UsbReceiver.UsbListener, OpenAccessoryReceiver
         EventBus.getDefault().post(em);
     }
 
-    @Override
-    public void usbDetached() {
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void usbDetached(EventMessage eventMessage) {
+        if(eventMessage.msgType!=EventMessage.MESSAGE_USB_DETACH)
+            return;
         em.setMsg("USB断开连接");
         EventBus.getDefault().post(em);
         linkSuccess=false;
@@ -208,5 +214,9 @@ public class UsbHelper implements UsbReceiver.UsbListener, OpenAccessoryReceiver
                 e.printStackTrace();
             }
         }
+    }
+
+    public boolean isLink() {
+        return linkSuccess;
     }
 }

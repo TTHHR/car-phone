@@ -4,6 +4,7 @@ package com.yaasoosoft.car;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -49,6 +50,12 @@ public class PlayerActivity extends BaseActivity implements PlayerInterface, Sur
 
     }
     @Subscribe(threadMode = ThreadMode.MAIN)
+    public void usbDetached(EventMessage eventMessage) {
+        if(eventMessage.msgType!=EventMessage.MESSAGE_USB_DETACH)
+            return;
+        finish();
+    }
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onFrame(EventMessage eventMessage) {
 
             if(eventMessage.msgType!=EventMessage.MESSAGE_VIDEO) {
@@ -57,6 +64,7 @@ return;
         }
         if(decoder==null)
             return;
+        Log.e(TAG,"video "+eventMessage.getVideoBuff().length);
         try {
             int inputBufferIndex = decoder.dequeueInputBuffer(0);
             if (inputBufferIndex >= 0) {
