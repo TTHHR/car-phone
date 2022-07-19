@@ -5,21 +5,21 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-public class UsbDetachedReceiver extends BroadcastReceiver {
+public class UsbReceiver extends BroadcastReceiver {
     private static final String TAG = "UsbDetached";
-    private UsbDetachedListener mUsbDetachedListener;
+    private UsbListener mUsbListener;
 
-    public UsbDetachedReceiver(UsbDetachedListener usbDetachedListener) {
-        mUsbDetachedListener = usbDetachedListener;
+    public UsbReceiver(UsbListener usbListener) {
+        mUsbListener = usbListener;
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.e(TAG,"attached "+intent.getAction());
-        mUsbDetachedListener.usbDetached();
+        mUsbListener.usbDetached();
     }
 
-    public interface UsbDetachedListener {
+    public interface UsbListener {
         /**
          * usb断开连接
          */

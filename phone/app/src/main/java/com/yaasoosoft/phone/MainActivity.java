@@ -1,48 +1,30 @@
 package com.yaasoosoft.phone;
 
-import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.hardware.usb.UsbAccessory;
-import android.hardware.usb.UsbManager;
 import android.os.Bundle;
-import android.os.ParcelFileDescriptor;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import org.greenrobot.eventbus.EventBus;
+import com.yaasoosoft.EventMessage;
+import com.yaasoosoft.phone.utils.UsbHelper;
+
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements OpenAccessoryReceiver.OpenAccessoryListener, UsbDetachedReceiver.UsbDetachedListener{
 
-    private static final String USB_ACTION = "com.yaasoosoft.usbaction";
+public class MainActivity extends BaseActivity {
+
+
     private TextView mLog;
     private Button mSend;
     private EditText mMessage;
-    private UsbManager mUsbManager;
-    private ExecutorService mThreadPool;
-    private UsbDetachedReceiver mUsbDetachedReceiver;
-    private OpenAccessoryReceiver mOpenAccessoryReceiver;
-    private ParcelFileDescriptor mParcelFileDescriptor;
-    private FileInputStream mFileInputStream;
-    private FileOutputStream mFileOutputStream;
-    private String TAG="Main";
 
+    private String TAG="Main";
+    private UsbHelper usbHelper;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,135 +42,31 @@ public class MainActivity extends AppCompatActivity implements OpenAccessoryRece
     private void initListener() {
         mSend.setOnClickListener((v)->{
             final String mMessageContent = mMessage.getText().toString();
+            EventMessage message=new EventMessage();
+            message.setMsg(mMessageContent);
+            message.msgType= EventMessage.MESSAGE_TEXT;
             if (!TextUtils.isEmpty(mMessageContent)) {
-                mThreadPool.execute(() -> {
-                    try {
-                        mFileOutputStream.write(mMessageContent.getBytes());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
+                usbHelper.writeData(message);
             }
         });
     }
 
     private void initData() {
-        mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
-        mThreadPool = Executors.newFixedThreadPool(3);
-
-        mUsbDetachedReceiver = new UsbDetachedReceiver(this);
-        IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
-        registerReceiver(mUsbDetachedReceiver, filter);
-
-        mOpenAccessoryReceiver = new OpenAccessoryReceiver(this);
-        PendingIntent pendingIntent ;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            pendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_IMMUTABLE);
-        } else {
-            pendingIntent = PendingIntent.getBroadcast(this, 0, new Intent(USB_ACTION),  PendingIntent.FLAG_ONE_SHOT);
-        }
-        IntentFilter intentFilter = new IntentFilter(USB_ACTION);
-        registerReceiver(mOpenAccessoryReceiver, intentFilter);
-
-        UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
-        UsbAccessory[] accessoryList = manager.getAccessoryList();
-        UsbAccessory usbAccessory = accessoryList == null ? null : accessoryList[0];
-        Log.e(TAG,"usbAccessory "+usbAccessory);
-        if (usbAccessory != null) {
-            if (mUsbManager.hasPermission(usbAccessory)) {
-                openAccessory(usbAccessory);
-            } else {
-                mUsbManager.requestPermission(usbAccessory, pendingIntent);
-            }
-        }
+        usbHelper=new UsbHelper(getApplicationContext());
+        usbHelper.init();
     }
-    /**
-     * 打开Accessory模式
-     *
-     * @param usbAccessory
-     */
-    private void openAccessory(UsbAccessory usbAccessory) {
-        mParcelFileDescriptor = mUsbManager.openAccessory(usbAccessory);
-        if (mParcelFileDescriptor != null) {
-            FileDescriptor fileDescriptor = mParcelFileDescriptor.getFileDescriptor();
-            mFileInputStream = new FileInputStream(fileDescriptor);
-            mFileOutputStream = new FileOutputStream(fileDescriptor);
 
-            mThreadPool.execute(new Runnable() {
-                byte[] mBytes=new byte[16384];
-                @Override
-                public void run() {
-                    int i = 0;
-                    while (i >= 0) {
-                        try {
-                            i = mFileInputStream.read(mBytes);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            break;
-                        }
-                        if (i > 0) {
-                            EventBus.getDefault().post(new String(mBytes, 0, i));
-                        }
-                    }
-                }
-            });
-        }
-    }
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onMessageEvent(String msg) {
-        mLog.append(msg);
-        mLog.append("\n");
-    }
-    @Override
-    public void usbDetached() {
-        finish();
-    }
-    @Override
-    public void openAccessoryModel(UsbAccessory usbAccessory) {
-        openAccessory(usbAccessory);
-    }
-
-    @Override
-    public void openAccessoryError() {
-
-    }
-    @Override
-    public void onStart() {
-        super.onStart();
-        EventBus.getDefault().register(this);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        EventBus.getDefault().unregister(this);
+    public void onMessageEvent(EventMessage msg) {
+        if(msg.msgType==EventMessage.MESSAGE_LOG||msg.msgType==EventMessage.MESSAGE_TEXT) {
+            Log.e(TAG,msg.getMsg());
+            mLog.append("\n");
+            mLog.append(msg.getMsg());
+        }
     }
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        unregisterReceiver(mOpenAccessoryReceiver);
-        unregisterReceiver(mUsbDetachedReceiver);
-        if (mParcelFileDescriptor != null) {
-            try {
-                mParcelFileDescriptor.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        if (mFileInputStream != null) {
-            try {
-                mFileInputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        if (mFileOutputStream != null) {
-            try {
-                mFileOutputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        usbHelper.release();
     }
 }

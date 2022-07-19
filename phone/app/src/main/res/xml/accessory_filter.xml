@@ -2,7 +2,7 @@
 <resources>
     <!--<usb-accessory />-->
     <usb-accessory
-        manufacturer="Google, Inc."
+        manufacturer="Yaasoosoft, Inc."
         model="AccessoryChat"
         type="Sample Program"
         version="1.0"/>

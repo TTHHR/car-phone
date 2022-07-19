@@ -7,6 +7,7 @@
     tools:context=".MainActivity">
 
     <ScrollView
+        android:layout_above="@id/ll"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -17,6 +18,7 @@
             android:textSize="12sp"/>
     </ScrollView>
     <LinearLayout
+        android:id="@+id/ll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
@@ -32,5 +34,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="发送"/>
+        <Button
+            android:id="@+id/gotoPlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="前往播放"/>
     </LinearLayout>
 </RelativeLayout>
